@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vstop</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f4f8;
+            font-family: Arial, sans-serif;
+        }
+        #loginPage, #dashboard {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #loginPage.active, #dashboard.active {
+            display: flex;
+        }
+        input {
+            padding: 0.5rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin: 0.5rem 0;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        #modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginPage" class="active">
+    <h2>Vnesite šifro:</h2>
+    <input type="password" id="password" placeholder="Šifra">
+    <button onclick="checkPassword()">Vstopi</button>
+</div>
+
+<div id="dashboard">
+    <h2 id="username">IME UPORABNIKA</h2>
+    <p class="bold" id="balance">STANJE: 10.00</p>
+    <button onclick="openModal()">AKCIJA</button>
+    <h3>Zgodovina transakcij:</h3>
+    <table id="transactionHistory" border="1">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Vrsta</th>
+                <th>Znesek</th>
+                <th>Razlog</th>
+            </tr>
+        </thead>
+        <tbody id="transactionTableBody"></tbody>
+    </table>
+</div>
+
+<div id="overlay" onclick="closeModal()"></div>
+<div id="modal">
+    <h3 id="modalUsername">IME UPORABNIKA</h3>
+    <p>Razpoložljivo stanje: <span id="modalBalance">10.00</span></p>
+    <input type="number" id="amount" placeholder="Vnesite znesek">
+    <input type="text" id="reason" placeholder="Zadeva">
+    <button onclick="updateBalance(true)">NALOŽI</button>
+    <button onclick="updateBalance(false)">ODVZEMI</button>
+</div>
+
+<script>
+const users = {
+    "0001": { ime: "Administrator", stanje: 1000000.00, zgodovina: [] },
+    "TJ17": { ime: "Tinkara JELEN", stanje: 14.00, zgodovina: [] },
+    "AJ17": { ime: "Anže JELEN", stanje: 5.00, zgodovina: [] }
+};
+let currentUser = null;
+
+function checkPassword() {
+    const enteredPassword = document.getElementById('password').value;
+    if (users[enteredPassword]) {
+        currentUser = enteredPassword;
+        loadUserData();
+        document.getElementById('loginPage').classList.remove('active');
+        document.getElementById('dashboard').classList.add('active');
+    } else {
+        alert('Napačna šifra!');
+    }
+}
+
+function loadUserData() {
+    let savedBalance = localStorage.getItem(`balance_${currentUser}`);
+    let savedHistory = JSON.parse(localStorage.getItem(`history_${currentUser}`)) || [];
+    if (savedBalance !== null) {
+        users[currentUser].stanje = parseFloat(savedBalance);
+    }
+    users[currentUser].zgodovina = savedHistory;
+    document.getElementById('username').innerText = users[currentUser].ime;
+    document.getElementById('modalUsername').innerText = users[currentUser].ime;
+    updateDisplay();
+}
+
+function openModal() {
+    document.getElementById('modal').style.display = 'block';
+    document.getElementById('overlay').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+}
+
+function updateBalance(isAdding) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const reason = document.getElementById('reason').value || 'Brez opisa';
+    if (!isNaN(amount) && amount > 0) {
+        users[currentUser].stanje += isAdding ? amount : -amount;
+        users[currentUser].zgodovina.push({
+            datum: new Date().toLocaleString(),
+            vrsta: isAdding ? 'NALOŽENO' : 'ODVZETO',
+            znesek: amount.toFixed(2),
+            razlog: reason
+        });
+        localStorage.setItem(`balance_${currentUser}`, users[currentUser].stanje.toFixed(2));
+        localStorage.setItem(`history_${currentUser}`, JSON.stringify(users[currentUser].zgodovina));
+        updateDisplay();
+        closeModal();
+    } else {
+        alert('Vnesite veljaven znesek.');
+    }
+}
+
+function updateDisplay() {
+    document.getElementById('balance').innerText = `STANJE: ${users[currentUser].stanje.toFixed(2)}`;
+    document.getElementById('modalBalance').innerText = users[currentUser].stanje.toFixed(2);
+    const tableBody = document.getElementById('transactionTableBody');
+    tableBody.innerHTML = '';
+    users[currentUser].zgodovina.forEach(entry => {
+        const row = `<tr><td>${entry.datum}</td><td>${entry.vrsta}</td><td>${entry.znesek}</td><td>${entry.razlog}</td></tr>`;
+        tableBody.innerHTML += row;
+    });
+}
+</script>
+
+</body>
+</html>
