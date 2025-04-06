@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <title>Delavci</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+    .ime-box {
+      display: inline-block;
+      padding: 10px 20px;
+      margin: 10px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #e0e0e0;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      z-index: 10;
+      width: 500px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      border-radius: 10px;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 5;
+    }
+    .btn {
+      padding: 8px 12px;
+      margin: 5px 5px 5px 0;
+      cursor: pointer;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .btn-reset {
+      background: #dc3545;
+    }
+    .zgodovina {
+      margin-top: 10px;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .skupaj {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .delavec-izpis {
+      font-size: 14px;
+      color: #333;
+    }
+    .ime-znesek {
+      font-weight: bold;
+      color: #007BFF;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Izberi delavca:</h2>
+<div id="delavci-container"></div>
+
+<div class="overlay" id="overlay" onclick="zapriOkno()"></div>
+
+<div class="modal" id="modal">
+  <h3 id="imeDelavca"></h3>
+  <button class="btn" onclick="sestaviPlaco()">Sestavi plačo</button>
+  <button class="btn" onclick="opravljenoDelo()">Opravljeno delo</button>
+  <button class="btn btn-reset" onclick="ponastaviDelavca()">🗑 Ponastavi podatke</button>
+
+  <div class="zgodovina" id="zgodovina"></div>
+</div>
+
+<script>
+  const delavci = ['Administrator', 'Jaša Petrinjak', 'Tinkara Jelen'];
+  let trenutniDelavec = '';
+  let place = {};
+  let zgodovina = {};
+
+  if (localStorage.getItem("place")) place = JSON.parse(localStorage.getItem("place"));
+  if (localStorage.getItem("zgodovina")) zgodovina = JSON.parse(localStorage.getItem("zgodovina"));
+
+  // 🔄 Posodobi seznam delavcev z zneski
+  function osveziSeznamDelavcev() {
+    const container = document.getElementById("delavci-container");
+    container.innerHTML = '';
+
+    delavci.forEach(ime => {
+      const skupaj = izracunajSkupaj(ime);
+      const div = document.createElement('div');
+      div.className = 'ime-box';
+      div.onclick = () => odpriOkno(ime);
+      div.innerHTML = `${ime}<br><span class="delavec-izpis">Zaslužil: <span class="ime-znesek">${skupaj.toFixed(2)} €</span></span>`;
+      container.appendChild(div);
+    });
+  }
+
+  function izracunajSkupaj(ime) {
+    let zapisi = zgodovina[ime] || [];
+    return zapisi.reduce((vsota, entry) => vsota + entry.znesek, 0);
+  }
+
+  function odpriOkno(ime) {
+    trenutniDelavec = ime;
+    document.getElementById("imeDelavca").innerText = ime;
+    document.getElementById("modal").style.display = "block";
+    document.getElementById("overlay").style.display = "block";
+    prikaziZgodovino();
+  }
+
+  function zapriOkno() {
+    document.getElementById("modal").style.display = "none";
+    document.getElementById("overlay").style.display = "none";
+    osveziSeznamDelavcev();
+  }
+
+  function sestaviPlaco() {
+    let vnos = prompt("Vnesi plačilo (€) za eno delo:");
+    let placilo = parseFloat(vnos);
+    if (!isNaN(placilo) && placilo > 0) {
+      place[trenutniDelavec] = placilo;
+      localStorage.setItem("place", JSON.stringify(place));
+      alert("Plačilo shranjeno: " + placilo.toFixed(2) + " €");
+    } else {
+      alert("Neveljavna vrednost.");
+    }
+  }
+
+  function opravljenoDelo() {
+    let znesek = place[trenutniDelavec] || 0;
+    let opis = prompt("Kratek opis dela:");
+    let datum = new Date().toLocaleString();
+    let vnos = { datum: datum, znesek: znesek, opis: opis || "(brez opisa)" };
+
+    if (!zgodovina[trenutniDelavec]) {
+      zgodovina[trenutniDelavec] = [];
+    }
+    zgodovina[trenutniDelavec].push(vnos);
+    localStorage.setItem("zgodovina", JSON.stringify(zgodovina));
+    prikaziZgodovino();
+    osveziSeznamDelavcev();
+  }
+
+  function prikaziZgodovino() {
+    const container = document.getElementById("zgodovina");
+    container.innerHTML = "<strong>Zgodovina del:</strong><br>";
+    const zapisi = zgodovina[trenutniDelavec] || [];
+    let skupaj = 0;
+
+    if (zapisi.length === 0) {
+      container.innerHTML += "<em>Ni opravljenih del.</em>";
+    } else {
+      zapisi.forEach(entry => {
+        container.innerHTML += `
+          <div>
+            📅 ${entry.datum}<br>
+            💬 ${entry.opis}<br>
+            💶 ${entry.znesek.toFixed(2)} €
+          </div><hr>`;
+        skupaj += entry.znesek;
+      });
+      container.innerHTML += `<div class="skupaj">Skupaj: ${skupaj.toFixed(2)} €</div>`;
+    }
+  }
+
+  function ponastaviDelavca() {
+    if (confirm(`Ali si prepričan, da želiš izbrisati vse podatke za ${trenutniDelavec}?`)) {
+      delete place[trenutniDelavec];
+      delete zgodovina[trenutniDelavec];
+      localStorage.setItem("place", JSON.stringify(place));
+      localStorage.setItem("zgodovina", JSON.stringify(zgodovina));
+      prikaziZgodovino();
+      osveziSeznamDelavcev();
+      alert("Podatki so bili izbrisani.");
+    }
+  }
+
+  osveziSeznamDelavcev();
+</script>
+
+</body>
+</html>
