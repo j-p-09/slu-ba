@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spored Filmov</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        header {
+            background-color: #282828;
+            color: white;
+            padding: 15px 10px;
+            font-size: 26px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #e5e5e5;
+        }
+        .edit-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .edit-btn:hover {
+            background-color: #45a049;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 60%;
+        }
+        .modal input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .schedule {
+            text-align: left;
+            cursor: pointer;
+            list-style-type: none;
+            padding: 0;
+            font-size: 18px;
+        }
+        .schedule li {
+            padding: 12px;
+            margin: 10px 0;
+            background-color: #fafafa;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        .schedule li:hover {
+            background-color: #e5e5e5;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        .seat {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            margin: 5px;
+            background-color: #2ecc71;
+            text-align: center;
+            line-height: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .seat.taken {
+            background-color: #e74c3c;
+        }
+        .seat:hover {
+            background-color: #27ae60;
+        }
+        .info {
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        footer {
+            padding: 15px;
+            background-color: #282828;
+            color: white;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #333;
+            color: white;
+        }
+        .remove-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        Spored Filmov
+        <button class="edit-btn" onclick="openEditModal()">Uredi Spored</button>
+    </header>
+    <main>
+        <div id="mainPage">
+            <h1>Spored filmov</h1>
+            <ul class="schedule" id="schedule"></ul>
+        </div>
+        <div class="film-page" id="filmPage" style="display:none;">
+            <h2 id="filmTitle"></h2>
+            <div id="seats"></div>
+            <button onclick="toggleInfo()">PRIKAŽI VEČ</button>
+            <div class="info" id="info"></div>
+            <button class="delete-btn" onclick="deleteFilm()">IZBRIŠI</button>
+            <table id="reservationsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Ime</th>
+                        <th>Priimek</th>
+                        <th>Št. kartice</th>
+                        <th>Akcija</th>
+                    </tr>
+                </thead>
+                <tbody id="reservationsTableBody"></tbody>
+            </table>
+        </div>
+    </main>
+    
+    <div class="modal" id="editModal">
+        <h2>Uredi Spored</h2>
+        <input type="text" id="filmName" placeholder="Ime filma" required>
+        <input type="text" id="filmTime" placeholder="Termin (npr. Ponedeljek 20:00)" required>
+        <button onclick="saveFilm()">Shrani</button>
+        <button onclick="closeEditModal()">Zapri</button>
+    </div>
+    
+    <footer>
+        &copy; 2025 Spored Filmov
+    </footer>
+    
+    <script>
+        let films = JSON.parse(localStorage.getItem('films')) || {};
+
+        function saveData() {
+            localStorage.setItem('films', JSON.stringify(films));
+        }
+
+        function openFilmPage(film) {
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('filmPage').style.display = 'block';
+            document.getElementById('filmTitle').textContent = film;
+            document.getElementById('seats').innerHTML = '';
+            document.getElementById('info').innerHTML = '';
+            films[film] = films[film] || { seats: [false, false, false, false, false, false], reservations: [] };
+            films[film].seats.forEach((taken, index) => {
+                let seat = document.createElement('div');
+                seat.textContent = index + 1;
+                seat.className = 'seat' + (taken ? ' taken' : '');
+                seat.onclick = () => reserveSeat(film, index);
+                document.getElementById('seats').appendChild(seat);
+            });
+            renderReservationsTable(film);
+            saveData();
+        }
+
+        function reserveSeat(film, index) {
+            if (!films[film].seats[index]) {
+                let name = prompt('Vnesite ime stranke:');
+                let surname = prompt('Vnesite priimek stranke:');
+                let cardNumber = prompt('Vnesite številko kartice stranke:');
+                if (name && surname && cardNumber) {
+                    films[film].seats[index] = true;
+                    films[film].reservations.push({
+                        name,
+                        surname,
+                        cardNumber,
+                        seat: index + 1
+                    });
+                    saveData();
+                    openFilmPage(film);
+                }
+            }
+        }
+
+        function deleteFilm() {
+            let film = document.getElementById('filmTitle').textContent;
+            delete films[film];
+            saveData();
+            document.getElementById('filmPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'block';
+            renderSchedule();
+        }
+
+        function deleteReservation(film, seatIndex) {
+            let reservation = films[film].reservations.find((r) => r.seat === seatIndex + 1);
+            if (reservation) {
+                let confirmation = confirm(`Ste prepričani, da želite izbrisati rezervacijo za ${reservation.name} ${reservation.surname}?`);
+                if (confirmation) {
+                    films[film].seats[seatIndex] = false;
+                    films[film].reservations = films[film].reservations.filter(r => r.seat !== seatIndex + 1);
+                    saveData();
+                    openFilmPage(film);
+                }
+            }
+        }
+
+        function toggleInfo() {
+            let infoDiv = document.getElementById('info');
+            let film = document.getElementById('filmTitle').textContent;
+            infoDiv.innerHTML = films[film].reservations.map((reservation) => {
+                return `${reservation.name} ${reservation.surname} - Sedež ${reservation.seat} <button onclick="deleteReservation('${film}', ${reservation.seat - 1})">Izbriši</button><br>`;
+            }).join('');
+            infoDiv.style.display = infoDiv.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function renderReservationsTable(film) {
+            let tableBody = document.getElementById('reservationsTableBody');
+            let reservationsTable = document.getElementById('reservationsTable');
+            tableBody.innerHTML = '';
+            films[film].reservations.forEach((reservation) => {
+                let row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${reservation.name}</td>
+                    <td>${reservation.surname}</td>
+                    <td>${reservation.cardNumber}</td>
+                    <td><button class="remove-btn" onclick="deleteReservation('${film}', ${reservation.seat - 1})">Izbriši</button></td>
+                `;
+                tableBody.appendChild(row);
+            });
+            reservationsTable.style.display = films[film].reservations.length > 0 ? 'table' : 'none';
+        }
+
+        function openEditModal() {
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        function saveFilm() {
+            let name = document.getElementById('filmName').value;
+            let time = document.getElementById('filmTime').value;
+            if (name && time) {
+                films[`${name} - ${time}`] = { seats: [false, false, false, false, false, false], reservations: [] };
+                saveData();
+                closeEditModal();
+                renderSchedule();
+            }
+        }
+
+        function renderSchedule() {
+            let scheduleList = document.getElementById('schedule');
+            scheduleList.innerHTML = '';
+            for (let film in films) {
+                let li = document.createElement('li');
+                li.textContent = film;
+                li.onclick = () => openFilmPage(film);
+                scheduleList.appendChild(li);
+            }
+        }
+
+        renderSchedule();
+    </script>
+</body>
+</html>
+
