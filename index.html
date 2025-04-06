@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Povezovalni gumbi</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 20px;
+    }
+
+    .link-button {
+      background-color: #007bff;
+      border: none;
+      color: white;
+      padding: 15px 25px;
+      text-align: center;
+      font-size: 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background-color 0.3s ease;
+    }
+
+    .link-button:hover {
+      background-color: #0056b3;
+    }
+
+    .link-button i {
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="button-container">
+    <a href="https://j-p-09.github.io/slu-ba/banka.html" class="link-button">
+      <i class="fas fa-money-bill-wave"></i> Banka
+    </a>
+    <a href="https://j-p-09.github.io/slu-ba/popis.html" class="link-button">
+      <i class="fas fa-calendar-alt"></i> Popis
+    </a>
+    <a href="https://j-p-09.github.io/slu-ba/filmi.html" class="link-button">
+      <i class="fas fa-camera"></i> Filmi
+    </a>
+  </div>
+
+</body>
+</html>
