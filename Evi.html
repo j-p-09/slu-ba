@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evidenčni sistem odsotnosti</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; }
+    nav { background-color: #333; padding: 10px; display: flex; gap: 15px; }
+    nav a { color: white; text-decoration: none; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .hidden { display: none; }
+    .container { padding: 20px; }
+    table, th, td { border: 1px solid black; border-collapse: collapse; }
+    th, td { padding: 8px; text-align: center; }
+    select, input[type="text"] { width: 100%; }
+    .uppercase { text-transform: uppercase; font-weight: bold; }
+    .bold { font-weight: bold; }
+    .red { color: red; font-weight: bold; }
+    .green { color: green; font-weight: bold; }
+    .dialog {
+      background: white;
+      border: 1px solid black;
+      padding: 10px;
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      width: 300px;
+    }
+    .dialog input[type="text"] { width: 100%; margin-top: 10px; }
+    .student-list span { cursor: pointer; display: block; }
+    .student-list span.manjka { color: red; font-weight: bold; }
+    .strike { text-decoration: line-through; color: gray; }
+    .eye { cursor: pointer; color: blue; }
+    .close-btn {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-weight: bold;
+      color: #888;
+      cursor: pointer;
+    }
+    .close-btn:hover {
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="#" onclick="showPage('home')">Domov</a>
+    <a href="#" onclick="showPage('urnik')">Urnik</a>
+    <a href="#" onclick="showPage('razred')">Razred</a>
+    <a href="#" onclick="showPage('nastavitve')">Nastavitve</a>
+    <a href="#" onclick="showPage('arhiv')">Arhiv</a>
+  </nav>
+
+  <div id="home" class="container">Dobrodošli v evidenčnem sistemu.</div>
+  <div id="nastavitve" class="container hidden">
+    <h2>Nastavitve</h2>
+    <table>
+      <tr><th>Ura</th><th>Predmet</th><th>Razred</th></tr>
+      <tbody id="nastavitve-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="urnik" class="container hidden">
+    <h2>Urnik</h2>
+    <table>
+      <tr id="urnik-header"></tr>
+      <tr id="urnik-body"></tr>
+    </table>
+  </div>
+
+  <div id="razred" class="container hidden">
+    <h2>Razred</h2>
+    <select id="razred-izbira"></select>
+    <table>
+      <thead><tr><th>Dijak</th><th>?</th><th>✔</th><th>✘</th><th>👁</th></tr></thead>
+      <tbody id="razred-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="arhiv" class="container hidden">
+    <h2>Arhiv</h2>
+    <label>Razred: <select id="arhiv-razred"></select></label>
+    <label>Predmet: <select id="arhiv-predmet">
+      <option>Splošno obnašanje</option><option>Slovenščina</option><option>Matematika</option><option>Plavanje</option><option>Tekme</option><option>Spanje</option><option>Sončenje</option><option>Likovna</option>
+    </select></label>
+    <table>
+      <thead><tr><th>Datum</th><th>Ura</th><th>Predmet</th><th>Razred</th><th>Dijaki</th><th>Snov</th></tr></thead>
+      <tbody id="arhiv-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="modal" class="dialog hidden"></div>
+
+  <script>
+    const ure = Array.from({ length: 11 }, (_, i) => `${i}. URA`);
+    const predmeti = ["Splošno obnašanje", "Slovenščina", "Matematika", "Plavanje", "Tekme", "Spanje", "Sončenje", "Likovna"];
+    const razredi = ["POLETJE 2", "P"];
+    const dijaki = {
+      "POLETJE 2": ["Anže Jelen", "Tinkara Jelen"],
+        };
+    let nastavitve = JSON.parse(localStorage.getItem("nastavitve") || "{}");
+    let arhiv = JSON.parse(localStorage.getItem("arhiv") || "[]");
+
+    function showPage(page) {
+      document.querySelectorAll(".container").forEach(div => div.classList.add("hidden"));
+      document.getElementById(page).classList.remove("hidden");
+      if (page === 'urnik') renderUrnik();
+      if (page === 'razred') renderRazred();
+      if (page === 'arhiv') renderArhiv();
+    }
+
+    function saveNastavitve() {
+      localStorage.setItem("nastavitve", JSON.stringify(nastavitve));
+    }
+
+    function saveArhiv() {
+      localStorage.setItem("arhiv", JSON.stringify(arhiv));
+    }Add commentMore actions
+
+    function closeModal() {
+      document.getElementById("modal").classList.add("hidden");
+    }
+
+    function renderNastavitve() {
+      const tbody = document.getElementById("nastavitve-tbody");
+      tbody.innerHTML = "";
+      ure.forEach((ura, i) => {
+        const selectedPredmet = nastavitve[i]?.predmet || "";
+        const selectedRazred = nastavitve[i]?.razred || "";
+        const predmetOptions = [`<option value="">Izberi</option>`]
+          .concat(predmeti.map(p => `<option ${p === selectedPredmet ? 'selected' : ''}>${p}</option>`))
+          .join('');
+        const razredOptions = [`<option value="">Izberi</option>`]
+          .concat(razredi.map(r => `<option ${r === selectedRazred ? 'selected' : ''}>${r}</option>`))
+          .join('');
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${ura}</td>
+          <td><select onchange="nastavitve[${i}] ??= {}; nastavitve[${i}].predmet = this.value; saveNastavitve();">${predmetOptions}</select></td>
+          <td><select onchange="nastavitve[${i}] ??= {}; nastavitve[${i}].razred = this.value; saveNastavitve();">${razredOptions}</select></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderUrnik() {
+      const header = document.getElementById("urnik-header");
+      const body = document.getElementById("urnik-body");
+      header.innerHTML = ure.map((u, i) => `<th>${u}</th>`).join('');
+      body.innerHTML = ure.map((u, i) => {
+        const nastavitev = nastavitve[i];
+        if (!nastavitev) return `<td onclick="openModal(${i})"></td>`;
+        if (nastavitev.razred === "P") return `<td class="strike">/</td>`;
+        return `<td onclick="openModal(${i})"><div class='uppercase'>${nastavitev.predmet}</div><div>${nastavitev.razred}</div></td>`;
+      }).join('');
+    }
+
+    function openModal(uraIdx) {
+      const nastavitev = nastavitve[uraIdx];
+      if (!nastavitev || nastavitev.razred === "P") return;
+      const modal = document.getElementById("modal");
+      const razred = nastavitev.razred;
+      const predmet = nastavitev.predmet;
+      const seznam = dijaki[razred] || [];
+      let html = `<div class="close-btn" onclick="closeModal()">X</div><b>${new Date().toLocaleDateString()}</b><br>Ura: ${uraIdx}. <br>Razred: ${razred}<div class="student-list">`;
+      seznam.forEach(ime => {
+        const zapis = arhiv.filter(v => v.dijaki.includes(ime)).map(a => a.ura).join(', ');
+        html += `<span onclick="this.classList.toggle('manjka'); this.style.fontWeight='bold'; this.style.color = this.classList.contains('manjka') ? 'red' : 'black';" style="font-weight:bold; cursor:pointer;">${ime}${zapis ? ` (${zapis})` : ''}</span>`;
+      });
+      html += `</div><textarea placeholder='Vnesi snov...'></textarea><button onclick="shraniUro(${uraIdx})">Shrani</button>`;
+      modal.innerHTML = html;
+      modal.classList.remove("hidden");
+    }
+
+    function shraniUro(uraIdx) {
+      const nastavitev = nastavitve[uraIdx];
+      const razred = nastavitev.razred;
+      const predmet = nastavitev.predmet;
+      const modal = document.getElementById("modal");
+      const dijakiList = Array.from(modal.querySelectorAll(".student-list span.manjka"), el => el.innerText.split(' (')[0]);
+      const snov = modal.querySelector("textarea").value;
+      arhiv.push({ datum: new Date().toLocaleDateString(), ura: uraIdx, predmet, razred, dijaki: dijakiList, snov, statusi: {} });
+      saveArhiv();
+      modal.classList.add("hidden");
+    }
+
+    function renderRazred() {
+      const select = document.getElementById("razred-izbira");
+      select.innerHTML = razredi.filter(r => r !== "P").map(r => `<option>${r}</option>`).join('');
+      select.onchange = () => renderRazredTabela(select.value);
+      renderRazredTabela(select.value);
+    }
+
+    function renderRazredTabela(razred) {
+      const tbody = document.getElementById("razred-tbody");
+      tbody.innerHTML = "";
+      (dijaki[razred] || []).forEach(ime => {
+        const odprte = arhiv.filter(a => a.razred === razred && a.dijaki.includes(ime) && !a.statusi[ime]);
+        const oprav = arhiv.filter(a => a.statusi[ime] === '✔');
+        const neopr = arhiv.filter(a => a.statusi[ime] === '✘');
+        tbody.innerHTML += `<tr><td>${ime}</td><td class='bold'>${odprte.length}</td><td class='green'>${oprav.length}</td><td class='red'>${neopr.length}</td><td><span class='eye' onclick="odpriPregled('${ime}')">👁</span></td></tr>`;
+      });
+    }
+
+    function posodobiStatus(indeks, ime, status) {
+      arhiv[indeks].statusi ??= {};
+      arhiv[indeks].statusi[ime] = status;
+      saveArhiv();
+      renderRazredTabela(arhiv[indeks].razred);
+      const vrstica = document.getElementById(`vnos-${indeks}`);
+      vrstica.className = status === '✔' ? 'green' : status === '✘' ? 'red' : '';
+    }
+
+    function odpriPregled(ime) {
+      const modal = document.getElementById("modal");
+      modal.innerHTML = `<div class="close-btn" onclick="closeModal()">X</div><h4>${ime}</h4>` +
+        arhiv.map((a, i) => {
+          if (!a.dijaki.includes(ime)) return '';
+          const barva = a.statusi[ime] === '✔' ? 'green' : a.statusi[ime] === '✘' ? 'red' : '';
+          return `<div id="vnos-${i}" class='${barva}'>${a.datum} - ${a.ura}. - ${a.predmet} 
+            <button onclick="posodobiStatus(${i}, '${ime}', '✔')">✔</button> 
+            <button onclick="posodobiStatus(${i}, '${ime}', '✘')">✘</button></div>`;
+        }).join('');
+      modal.classList.remove("hidden");
+    }
+
+    function renderArhiv() {
+      const razredSelect = document.getElementById("arhiv-razred");
+      razredSelect.innerHTML = razredi.map(r => `<option>${r}</option>`).join('');
+      razredSelect.onchange = izpisiArhiv;
+      document.getElementById("arhiv-predmet").onchange = izpisiArhiv;
+      izpisiArhiv();
+    }
+
+    function izpisiArhiv() {
+      const razred = document.getElementById("arhiv-razred").value;
+      const predmet = document.getElementById("arhiv-predmet").value;
+      const tbody = document.getElementById("arhiv-tbody");
+      tbody.innerHTML = "";
+      arhiv.filter(a => (razred === "" || a.razred === razred) && (predmet === "" || a.predmet === predmet)).forEach(a => {
+        tbody.innerHTML += `<tr><td>${a.datum}</td><td>${a.ura}.</td><td>${a.predmet}</td><td>${a.razred}</td><td>${a.dijaki.join(", ")}</td><td>${a.snov}</td></tr>`;
+      });
+    }
+
+    renderNastavitve();
+    showPage('home');
+  </script>
+</body>
+</html>
